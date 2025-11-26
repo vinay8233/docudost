@@ -331,7 +331,7 @@ const Application = require("../models/Application");
 const Plan = require("../models/Plan");
 const Blog = require("../models/Blogs"); 
 
-const User = require("../models/User");
+const User = require('../models/user');
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
