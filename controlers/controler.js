@@ -330,13 +330,25 @@ const Contact = require("../models/Contact");
 const Application = require("../models/Application");
 const Plan = require("../models/Plan");
 const Blog = require("../models/Blogs"); 
+const Visa= require("../models/visaplans");
+const OCI = require("../models/ociplans");
+const Passport = require("../models/pasportplans");
+const PassportApplication = require("../models/pasportapplication");
+const PCCApplication = require("../models/pccapplication");
+const SurrenderOfIPApplication = require("../models/surrenderofip");
+const VisaApplication = require("../models/visaapplication");
+const OciApplication = require("../models/ociapplication");
+
+const { sendOtpEmail } = require("../utils/sendOtp");
 
 const User = require('../models/user');
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const pasportapplication = require("../models/pasportapplication");
 require("dotenv").config();
+
 
 
 
@@ -381,14 +393,18 @@ exports.register = async (req, res) => {
 
     await user.save();
 
-    // ✅ Create transporter
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS
-      }
-    });
+    
+    // Create transporter
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS
+  }
+});
+
 
     // Send OTP via email
     if (email) {
@@ -555,102 +571,122 @@ exports.deleteuser = async (req, res) => {
 
 
 
+// exports.createContact = async (req, res) => {
+//   try {
+//     // -----------------
+//     // Handle uploaded files
+//     // -----------------
+//     const documents = req.files?.map(file => file.filename) || [];
+
+//     // -----------------
+//     // Handle relatives
+//     // -----------------
+//     const relatives = [];
+//     if (req.body.hasRelativesInIndia === "true" || req.body.hasRelativesInIndia === true) {
+//       Object.keys(req.body)
+//         .filter(key => key.startsWith("relatives"))
+//         .forEach(key => {
+//           const match = key.match(/relatives\[(\d+)\]\[(name|number)\]/);
+//           if (match) {
+//             const idx = parseInt(match[1]);
+//             const field = match[2];
+//             if (!relatives[idx]) relatives[idx] = { name: "", number: "" };
+//             relatives[idx][field] = req.body[key] || "";
+//           }
+//         });
+//     }
+
+//     // -----------------
+//     // Create application object
+//     // -----------------
+//     const application = new Application({
+//       planId: req.body.planId || null,
+//       subCategory: req.body.subCategory || "",
+
+//       // Applicant
+//       fullName: req.body.fullName || "",
+//       email: req.body.email || "",
+//       phone: req.body.phone || "",
+//       employmentType: req.body.employmentType || "",
+//       dob: req.body.dob || null,
+//       address: req.body.address || "",
+//       emergencyContact: {
+//         name: req.body["emergencyContact[name]"] || "",
+//         number: req.body["emergencyContact[number]"] || "",
+//       },
+//       hasNameChange: req.body.hasNameChange === "true" || req.body.hasNameChange === true,
+//       previousName: req.body.previousName || "",
+//       education: req.body.education ? [req.body.education] : [],
+//       occupation: req.body.occupation || "",
+
+//       // Family
+//       father: {
+//         name: req.body["father[name]"] || "",
+//         occupation: req.body["father[occupation]"] || "",
+//         nationality: req.body["father[nationality]"] || "",
+//       },
+//       mother: {
+//         name: req.body["mother[name]"] || "",
+//         occupation: req.body["mother[occupation]"] || "",
+//         nationality: req.body["mother[nationality]"] || "",
+//       },
+
+//       // Marital
+//       maritalStatus: req.body.maritalStatus || "Single",
+//       spouse: {
+//         name: req.body["spouse[name]"] || "",
+//         occupation: req.body["spouse[occupation]"] || "",
+//         nationality: req.body["spouse[nationality]"] || "",
+//       },
+
+//       // Dual nationality
+//       hasDualNationality: req.body.hasDualNationality === "true" || req.body.hasDualNationality === true,
+//       dualNationalityCountry: req.body.dualNationalityCountry || "",
+
+//       // Relatives
+//       hasRelativesInIndia: req.body.hasRelativesInIndia === "true" || req.body.hasRelativesInIndia === true,
+//       relatives,
+
+//       // Plan info
+//       category: req.body.category || "",
+//       citizenship: req.body.citizenship || "",
+//       visaCountry: req.body.visaCountry || "",
+//       paymentAmount: req.body.paymentAmount || 0,
+
+//       // Files
+//       documents,
+//     });
+
+//     // -----------------
+//     // Save to DB
+//     // -----------------
+//     await application.save();
+//     res.json({ message: "✅ Application saved successfully!" });
+//   } catch (err) {
+//     console.error("❌ Error saving application:", err);
+//     res.status(400).json({ message: "Failed to save application", error: err.message });
+//   }
+// };
+
 exports.createContact = async (req, res) => {
   try {
-    // -----------------
-    // Handle uploaded files
-    // -----------------
-    const documents = req.files?.map(file => file.filename) || [];
-
-    // -----------------
-    // Handle relatives
-    // -----------------
-    const relatives = [];
-    if (req.body.hasRelativesInIndia === "true" || req.body.hasRelativesInIndia === true) {
-      Object.keys(req.body)
-        .filter(key => key.startsWith("relatives"))
-        .forEach(key => {
-          const match = key.match(/relatives\[(\d+)\]\[(name|number)\]/);
-          if (match) {
-            const idx = parseInt(match[1]);
-            const field = match[2];
-            if (!relatives[idx]) relatives[idx] = { name: "", number: "" };
-            relatives[idx][field] = req.body[key] || "";
-          }
-        });
-    }
-
-    // -----------------
-    // Create application object
-    // -----------------
-    const application = new Application({
-      planId: req.body.planId || null,
-      subCategory: req.body.subCategory || "",
-
-      // Applicant
-      fullName: req.body.fullName || "",
-      email: req.body.email || "",
-      phone: req.body.phone || "",
-      employmentType: req.body.employmentType || "",
-      dob: req.body.dob || null,
-      address: req.body.address || "",
-      emergencyContact: {
-        name: req.body["emergencyContact[name]"] || "",
-        number: req.body["emergencyContact[number]"] || "",
-      },
-      hasNameChange: req.body.hasNameChange === "true" || req.body.hasNameChange === true,
-      previousName: req.body.previousName || "",
-      education: req.body.education ? [req.body.education] : [],
-      occupation: req.body.occupation || "",
-
-      // Family
-      father: {
-        name: req.body["father[name]"] || "",
-        occupation: req.body["father[occupation]"] || "",
-        nationality: req.body["father[nationality]"] || "",
-      },
-      mother: {
-        name: req.body["mother[name]"] || "",
-        occupation: req.body["mother[occupation]"] || "",
-        nationality: req.body["mother[nationality]"] || "",
-      },
-
-      // Marital
-      maritalStatus: req.body.maritalStatus || "Single",
-      spouse: {
-        name: req.body["spouse[name]"] || "",
-        occupation: req.body["spouse[occupation]"] || "",
-        nationality: req.body["spouse[nationality]"] || "",
-      },
-
-      // Dual nationality
-      hasDualNationality: req.body.hasDualNationality === "true" || req.body.hasDualNationality === true,
-      dualNationalityCountry: req.body.dualNationalityCountry || "",
-
-      // Relatives
-      hasRelativesInIndia: req.body.hasRelativesInIndia === "true" || req.body.hasRelativesInIndia === true,
-      relatives,
-
-      // Plan info
-      category: req.body.category || "",
-      citizenship: req.body.citizenship || "",
-      visaCountry: req.body.visaCountry || "",
-      paymentAmount: req.body.paymentAmount || 0,
-
-      // Files
-      documents,
+    const contact = new Contact({
+      name: req.body.name,
+      email: req.body.email,
+      message: req.body.message,
     });
 
-    // -----------------
-    // Save to DB
-    // -----------------
-    await application.save();
-    res.json({ message: "✅ Application saved successfully!" });
+    await contact.save();
+
+    res.json({ message: "Contact saved successfully!" });
   } catch (err) {
-    console.error("❌ Error saving application:", err);
-    res.status(400).json({ message: "Failed to save application", error: err.message });
+    res.status(400).json({ message: "Failed to save contact", error: err.message });
   }
 };
+
+
+
+
 
 
 
@@ -1286,3 +1322,1170 @@ exports.addComment = async (req, res) => {
 
 
 
+
+
+
+
+// Create Visa
+exports.createVisa = async (req, res) => {
+  try {
+    const visa = await Visa.create(req.body);
+    res.status(201).json({ message: "Visa created successfully", visa });
+  } catch (error) {
+    res.status(500).json({ message: "Error creating visa", error });
+  }
+};
+
+// Get all Visa
+exports.getAllVisa = async (req, res) => {
+  try {
+    const data = await Visa.find();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching visa", error });
+  }
+};
+
+// Get Visa by ID
+exports.getVisaById = async (req, res) => {
+  try {
+    const visa = await Visa.findById(req.params.id);
+    if (!visa) return res.status(404).json({ message: "Visa not found" });
+    res.json(visa);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching visa", error });
+  }
+};
+
+// Update Visa
+exports.updateVisa = async (req, res) => {
+  try {
+    const visa = await Visa.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: "Visa updated", visa });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating visa", error });
+  }
+};
+
+// Delete Visa
+exports.deleteVisa = async (req, res) => {
+  try {
+    await Visa.findByIdAndDelete(req.params.id);
+    res.json({ message: "Visa deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting visa", error });
+  }
+};
+
+
+
+
+
+
+// Create
+exports.createOCI = async (req, res) => {
+  try {
+    const oci = await OCI.create(req.body);
+    res.status(201).json({ message: "OCI created", oci });
+  } catch (error) {
+    res.status(500).json({ message: "Error creating OCI", error });
+  }
+};
+
+// Get All
+exports.getAllOCI = async (req, res) => {
+  try {
+    const data = await OCI.find();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching OCI", error });
+  }
+};
+
+// Get by ID
+exports.getOCIById = async (req, res) => {
+  try {
+    const oci = await OCI.findById(req.params.id);
+    if (!oci) return res.status(404).json({ message: "OCI not found" });
+    res.json(oci);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching OCI", error });
+  }
+};
+
+// Update
+exports.updateOCI = async (req, res) => {
+  try {
+    const oci = await OCI.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: "OCI updated", oci });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating OCI", error });
+  }
+};
+
+// Delete
+exports.deleteOCI = async (req, res) => {
+  try {
+    await OCI.findByIdAndDelete(req.params.id);
+    res.json({ message: "OCI deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting OCI", error });
+  }
+};
+
+
+
+
+
+
+
+
+
+// Create
+exports.createPassport = async (req, res) => {
+  try {
+    const passport = await Passport.create(req.body);
+    res.status(201).json({ message: "Passport created", passport });
+  } catch (error) {
+    res.status(500).json({ message: "Error creating Passport", error });
+  }
+};
+
+// Get All
+exports.getAllPassport = async (req, res) => {
+  try {
+    const data = await Passport.find();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching Passport", error });
+  }
+};
+
+// Get by ID
+exports.getPassportById = async (req, res) => {
+  try {
+    const passport = await Passport.findById(req.params.id);
+    if (!passport) return res.status(404).json({ message: "Passport not found" });
+    res.json(passport);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching Passport", error });
+  }
+};
+
+// Update
+exports.updatePassport = async (req, res) => {
+  try {
+    const passport = await Passport.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: "Passport updated", passport });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating Passport", error });
+  }
+};
+
+// Delete
+exports.deletePassport = async (req, res) => {
+  try {
+    await Passport.findByIdAndDelete(req.params.id);
+    res.json({ message: "Passport deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting Passport", error });
+  }
+};
+
+
+
+
+
+
+
+// ➜ Create new passport application
+// exports.createPassportApplication = async (req, res) => {
+//   try {
+//     const application = new PassportApplication(req.body);
+//     await application.save();
+
+//     res.status(201).json({
+//       message: "Application submitted successfully",
+//       data: application,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Error creating application", error });
+//   }
+// };
+
+
+exports.createPassportApplication = async (req, res) => {
+  // try {
+  //   const { email } = req.body;
+
+  //   const user = await PassportApplication.findOne({ email });
+
+  //   if (!user || !user.otpVerified) {
+  //     return res.status(400).json({
+  //       message: "Please verify OTP before submitting application",
+  //     });
+  //   }
+
+  //   // Update application details
+  //   Object.assign(user, req.body);
+  //   await user.save();
+
+  //   res.status(201).json({
+  //     message: "Application submitted successfully",
+  //     data: user,
+  //   });
+  // } catch (error) {
+  //   res.status(500).json({ message: "Error creating application", error });
+  // }
+
+try {
+    const application = new PassportApplication(req.body);
+    await application.save();
+
+    res.status(201).json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+
+
+};
+
+
+// ➜ Get all passport applications
+exports.getAllPassportApplications = async (req, res) => {
+  try {
+    const applications = await PassportApplication.find().sort({ createdAt: -1 });
+
+    res.status(200).json({ data: applications });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching applications", error });
+  }
+};
+
+// ➜ Get single passport application by ID
+exports.getPassportApplicationById = async (req, res) => {
+  try {
+    const application = await PassportApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({ data: application });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching application", error });
+  }
+};
+
+// ➜ Update passport application
+exports.updatePassportApplication = async (req, res) => {
+  try {
+    const updated = await PassportApplication.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "Application updated",
+      data: updated,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating application", error });
+  }
+};
+
+// ➜ Delete passport application
+exports.deletePassportApplication = async (req, res) => {
+  try {
+    const deleted = await PassportApplication.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({ message: "Application deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting application", error });
+  }
+};
+
+
+
+
+
+
+
+// ➜ Send OTP
+exports.senduserOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP temporarily in DB
+    let existing = await PassportApplication.findOne({ email });
+
+    if (!existing) {
+      existing = new PassportApplication({ email, otp });
+    } else {
+      existing.otp = otp;
+    }
+
+    await existing.save();
+
+    // Send OTP via Email
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({
+      message: "OTP sent successfully",
+      email: email,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error sending OTP", error });
+  }
+};
+
+exports.verifyuserOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email & OTP required" });
+    }
+
+    const user = await PassportApplication.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // OTP verified
+    user.otpVerified = true;
+    user.otp = null; // Clear OTP
+    await user.save();
+
+    res.status(200).json({
+      message: "OTP verified successfully",
+      verified: true,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error verifying OTP", error });
+  }
+};
+
+
+
+
+exports.createPCCApplication = async (req, res) => {
+ 
+
+  try {
+    const application = new PCCApplication(req.body);
+    await application.save();
+
+    res.status(201).json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+ // try {
+  //   const { email } = req.body;
+
+  //   const user = await PCCApplication.findOne({ email });
+
+  //   if (!user || !user.otpVerified) {
+  //     return res.status(400).json({
+  //       message: "Please verify OTP before submitting application",
+  //     });
+  //   }
+
+  //   // Update all fields from req.body
+  //   Object.assign(user, req.body);
+  //   await user.save();
+
+  //   res.status(201).json({
+  //     message: "PCC Application submitted successfully",
+  //     data: user,
+  //   });
+  // } catch (error) {
+  //   res.status(500).json({
+  //     message: "Error creating PCC application",
+  //     error,
+  //   });
+  // }
+
+
+
+exports.getAllPCCApplications = async (req, res) => {
+  try {
+    const applications = await PCCApplication.find().sort({ createdAt: -1 });
+
+    res.status(200).json({ data: applications });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching PCC applications",
+      error,
+    });
+  }
+};
+
+
+
+
+exports.getPCCApplicationById = async (req, res) => {
+  try {
+    const application = await PCCApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({ data: application });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching PCC application",
+      error,
+    });
+  }
+};
+
+
+
+exports.updatePCCApplication = async (req, res) => {
+  try {
+    const updated = await PCCApplication.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "PCC Application updated",
+      data: updated,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating PCC application",
+      error,
+    });
+  }
+};
+
+
+
+exports.deletePCCApplication = async (req, res) => {
+  try {
+    const deleted = await PCCApplication.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "PCC Application deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error deleting PCC application",
+      error,
+    });
+  }
+};
+
+
+
+// ➜ Send PCC OTP
+exports.sendPccOtp = async (req, res) => {
+  try {
+    const { email, name, mobile } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Check if user exists
+    let existing = await PCCApplication.findOne({ email });
+
+    if (!existing) {
+      // Create new user with basic details + OTP
+      existing = new PCCApplication({ email, name, mobile, otp });
+    } else {
+      // Update OTP & basic details
+      existing.otp = otp;
+      if (name) existing.name = name;
+      if (mobile) existing.mobile = mobile;
+    }
+
+    await existing.save();
+
+    // Send OTP via Email
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({
+      message: "OTP sent successfully",
+      email: email,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error sending OTP", error });
+  }
+};
+
+
+// ➜ Verify PCC OTP
+exports.verifyPccOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email & OTP required" });
+    }
+
+    const user = await PCCApplication.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // OTP verified
+    user.otpVerified = true;
+    user.otp = null; 
+    await user.save();
+
+    res.status(200).json({
+      message: "OTP verified successfully",
+      verified: true,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error verifying OTP", error });
+  }
+};
+
+
+
+
+exports.createSurrenderIPApplication = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await SurrenderOfIPApplication.findOne({ email });
+
+    if (!user || !user.otpVerified) {
+      return res.status(400).json({
+        message: "Please verify OTP before submitting application",
+      });
+    }
+
+    // Fill all form fields
+    Object.assign(user, req.body);
+    await user.save();
+
+    res.status(201).json({
+      message: "Surrender of Indian Passport Application submitted successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error creating application",
+      error,
+    });
+  }
+};
+
+
+exports.getAllSurrenderIPApplications = async (req, res) => {
+  try {
+    const applications = await SurrenderOfIPApplication.find().sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({ data: applications });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching applications",
+      error,
+    });
+  }
+};
+
+
+exports.getSurrenderIPApplicationById = async (req, res) => {
+  try {
+    const application = await SurrenderOfIPApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({ data: application });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching application",
+      error,
+    });
+  }
+};
+
+
+exports.updateSurrenderIPApplication = async (req, res) => {
+  try {
+    const updated = await SurrenderOfIPApplication.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "Application updated successfully",
+      data: updated,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating application",
+      error,
+    });
+  }
+};
+
+
+exports.deleteSurrenderIPApplication = async (req, res) => {
+  try {
+    const deleted = await SurrenderOfIPApplication.findByIdAndDelete(
+      req.params.id
+    );
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "Application deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error deleting application",
+      error,
+    });
+  }
+};
+
+
+exports.sendSurrenderIpOtp = async (req, res) => {
+  try {
+    const { email, name, mobile } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    let existing = await SurrenderOfIPApplication.findOne({ email });
+
+    if (!existing) {
+      existing = new SurrenderOfIPApplication({
+        email,
+        name,
+        mobile,
+        otp,
+      });
+    } else {
+      existing.otp = otp;
+      if (name) existing.name = name;
+      if (mobile) existing.mobile = mobile;
+    }
+
+    await existing.save();
+
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({
+      message: "OTP sent successfully",
+      email,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error sending OTP",
+      error,
+    });
+  }
+};
+
+
+exports.verifySurrenderIpOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email & OTP required" });
+    }
+
+    const user = await SurrenderOfIPApplication.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.otpVerified = true;
+    user.otp = null;
+    await user.save();
+
+    res.status(200).json({
+      message: "OTP verified successfully",
+      verified: true,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error verifying OTP",
+      error,
+    });
+  }
+};
+
+
+
+
+
+
+// ➜ CREATE VISA APPLICATION
+// exports.createVisaApplication = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     const user = await VisaApplication.findOne({ email });
+
+//     if (!user || !user.otpVerified) {
+//       return res.status(400).json({
+//         message: "Please verify OTP before submitting application",
+//       });
+//     }
+
+//     // Update all fields from req.body
+//     Object.assign(user, req.body);
+//     await user.save();
+
+//     res.status(201).json({
+//       message: "Visa Application submitted successfully",
+//       data: user,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Error creating visa application",
+//       error,
+//     });
+//   }
+// };
+
+
+
+
+// ➜ GET ALL VISA APPLICATIONS
+exports.getAllVisaApplications = async (req, res) => {
+  try {
+    const applications = await VisaApplication.find().sort({ createdAt: -1 });
+
+    res.status(200).json({ data: applications });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching visa applications",
+      error,
+    });
+  }
+};
+
+
+// ➜ GET VISA APPLICATION BY ID
+exports.getVisaApplicationById = async (req, res) => {
+  try {
+    const application = await VisaApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({ data: application });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching visa application",
+      error,
+    });
+  }
+};
+
+
+// ➜ UPDATE VISA APPLICATION
+exports.updateVisaApplication = async (req, res) => {
+  try {
+    const updated = await VisaApplication.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "Visa Application updated",
+      data: updated,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating visa application",
+      error,
+    });
+  }
+};
+
+
+// ➜ DELETE VISA APPLICATION
+exports.deleteVisaApplication = async (req, res) => {
+  try {
+    const deleted = await VisaApplication.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.status(200).json({
+      message: "Visa Application deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error deleting visa application",
+      error,
+    });
+  }
+};
+
+
+// ➜ SEND VISA OTP
+exports.sendVisaOtp = async (req, res) => {
+  try {
+    const { email, name, mobile } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    let existing = await VisaApplication.findOne({ email });
+
+    if (!existing) {
+      existing = new VisaApplication({ email, name, mobile, otp });
+    } else {
+      existing.otp = otp;
+      if (name) existing.name = name;
+      if (mobile) existing.mobile = mobile;
+    }
+
+    await existing.save();
+
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({
+      message: "OTP sent successfully",
+      email,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error sending OTP",
+      error,
+    });
+  }
+};
+
+
+// ➜ VERIFY VISA OTP
+exports.verifyVisaOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP required" });
+    }
+
+    const user = await VisaApplication.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.otpVerified = true;
+    user.otp = null;
+    await user.save();
+
+    res.status(200).json({
+      message: "OTP verified successfully",
+      verified: true,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error verifying OTP",
+      error,
+    });
+  }
+};
+
+
+
+
+/* -----------------------------------------
+   ➜ GET ALL OCI APPLICATIONS
+------------------------------------------ */
+exports.getAllOciApplications = async (req, res) => {
+  // try {
+  //   const applications = await OciApplication.find().sort({ createdAt: -1 });
+
+  //   res.status(200).json({ data: applications });
+  // } catch (error) {
+  //   res.status(500).json({
+  //     message: "Error fetching OCI applications",
+  //     error,
+  //   });
+  // }
+  try {
+    const application = new OciApplication(req.body);
+    await application.save();
+
+    res.status(201).json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* -----------------------------------------
+   ➜ GET OCI APPLICATION BY ID
+------------------------------------------ */
+exports.createOciApplication = async (req, res) => {
+  try {
+    const application = new OciApplication(req.body);
+    await application.save();
+    res.status(201).json({ data: application });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error creating OCI application",
+      error,
+    });
+  }
+};
+
+exports.getOciApplicationById = async (req, res) => {
+  try {
+    const application = await OciApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({ message: "OCI Application not found" });
+    }
+
+    res.status(200).json({ data: application });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching OCI application",
+      error,
+    });
+  }
+};
+
+/* -----------------------------------------
+   ➜ UPDATE OCI APPLICATION
+------------------------------------------ */
+exports.updateOciApplication = async (req, res) => {
+  try {
+    const data = { ...req.body };
+
+    // 🧹 Cleanup if category is Minor
+    if (data.category === "Minor") {
+      data.maritalstatus = undefined;
+      data.employtype = undefined;
+      data.occupation = undefined;
+      data.nameofemployer = undefined;
+      data.addressofemployer = undefined;
+      data.contactnumberofemployer = undefined;
+    }
+
+    // 🧹 Cleanup if category is Adult
+    if (data.category === "Adult") {
+      data.birthCertificateIssuedPlace = undefined;
+      data.parentsMarriageCertificateIssuedPlace = undefined;
+    }
+
+    const updated = await OciApplication.findByIdAndUpdate(
+      req.params.id,
+      data,
+      { new: true, runValidators: true } // ✅ important
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "OCI Application not found" });
+    }
+
+    res.status(200).json({
+      message: "OCI Application updated successfully",
+      data: updated,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating OCI application",
+      error,
+    });
+  }
+};
+
+
+/* -----------------------------------------
+   ➜ DELETE OCI APPLICATION
+------------------------------------------ */
+exports.deleteOciApplication = async (req, res) => {
+  try {
+    const deleted = await OciApplication.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "OCI Application not found" });
+    }
+
+    res.status(200).json({
+      message: "OCI Application deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error deleting OCI application",
+      error,
+    });
+  }
+};
+
+/* -----------------------------------------
+   ➜ SEND OCI OTP
+------------------------------------------ */
+exports.sendOciOtp = async (req, res) => {
+  try {
+    const { email, name, mobile, agecategory } = req.body;
+
+    if (!email || !agecategory) {
+      return res.status(400).json({
+        message: "Email and category (Adult/Minor) are required",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    let application = await OciApplication.findOne({ email });
+
+    if (!application) {
+      application = new OciApplication({
+        email,
+        name,
+        mobile,
+        agecategory, // ✅ REQUIRED
+        otp,
+      });
+    } else {
+      application.otp = otp;
+      application.agecategory = agecategory; // ✅ update if changed
+      if (name) application.name = name;
+      if (mobile) application.mobile = mobile;
+      application.otpVerified = false;
+    }
+
+    await application.save();
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({
+      message: "OTP sent successfully",
+      email,
+      agecategory,
+    });
+  } catch (error) {
+  console.error("SEND OCI OTP ERROR:", error);
+
+  res.status(500).json({
+    message: "Error sending OTP",
+    error: error.message,
+  });
+}
+
+};
+
+
+
+/* -----------------------------------------
+   ➜ VERIFY OCI OTP
+------------------------------------------ */
+exports.verifyOciOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP required" });
+    }
+
+    const user = await OciApplication.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.otpVerified = true;
+    user.otp = null;
+
+    // 🔥 ONLY DIFFERENCE FROM VISA
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      message: "OTP verified successfully",
+      verified: true,
+    });
+  } catch (error) {
+    console.error("VERIFY OCI OTP ERROR:", error.message);
+
+    res.status(500).json({
+      message: "Error verifying OTP",
+      error: error.message,
+    });
+  }
+};

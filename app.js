@@ -8,12 +8,16 @@ const path = require("path");
 
 
 dotenv.config();
+console.log("ENV TEST:", process.env.MAIL_USER, process.env.MAIL_PASS);
 
 const app = express();
-app.use(cors());
+app.use(cors({
+   // Testing ke liye, baad me specific domain add karna
+}));
 app.use(express.json());
-app.use("/api", apirouter);
 app.use(express.urlencoded({ extended: true }));
+app.use("/api", apirouter);
+
 // if (process.env.NODE_ENV === 'production') {
 //   app.use(express.static(path.join(__dirname, '..', 'my-project', 'build')));
 //   app.get('*', (req, res) =>
