@@ -17,6 +17,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api", apirouter);
+app.get("/", (req, res) => {
+  res.send("Docudost Visa API is running 🚀");
+});
 
 // if (process.env.NODE_ENV === 'production') {
 //   app.use(express.static(path.join(__dirname, '..', 'my-project', 'build')));
