@@ -12,7 +12,8 @@ console.log("ENV TEST:", process.env.MAIL_USER, process.env.MAIL_PASS);
 
 const app = express();
 app.use(cors({
-   // Testing ke liye, baad me specific domain add karna
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
